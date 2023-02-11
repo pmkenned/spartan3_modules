@@ -1,0 +1,8 @@
+NET clk     LOC=T9;
+
+NET vga_rgb<0>          LOC=R12;
+NET vga_rgb<1>          LOC=T12;
+NET vga_rgb<2>          LOC=R11;
+
+NET vga_hs_l            LOC=R9;
+NET vga_vs_l            LOC=T10;
