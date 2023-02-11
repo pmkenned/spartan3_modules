@@ -35,7 +35,7 @@ module counter
 (
     input wire clk,
     input wire rst,
-    input wire x,
+    input wire inc,
     input wire clr,
     output wire [W-1:0] cnt
 );
@@ -50,7 +50,7 @@ module counter
     endgenerate
 
     wire [W-1:0] cnt_n;
-    assign cnt_n = clr ? START_VAL : (x ? ((cnt == FINAL_VAL) ? (SATURATE ? cnt : START_VAL) : next_num) : cnt);
+    assign cnt_n = clr ? START_VAL : (inc ? ((cnt == FINAL_VAL) ? (SATURATE ? cnt : START_VAL) : next_num) : cnt);
 
     ff_ar #(.W(W), .RESET_VAL(START_VAL)) counter_ff(.clk(clk), .rst(rst), .d(cnt_n), .q(cnt));
 

@@ -69,7 +69,7 @@ module ps2_receiver(
 
     // NOTE: final value is 10 so that the stop bit cycle resets the counter to 0 to start over
     wire [3:0] ps2_clk_cnt_q;
-    counter #(.W(4), .START_VAL(0), .FINAL_VAL(10)) ps2_clk_counter(.clk(ps2_clk_stable), .rst(rst), .clr(1'b0), .x(1'b1), .cnt(ps2_clk_cnt_q));
+    counter #(.W(4), .START_VAL(0), .FINAL_VAL(10)) ps2_clk_counter(.clk(ps2_clk_stable), .rst(rst), .clr(1'b0), .inc(1'b1), .cnt(ps2_clk_cnt_q));
 
     wire ps2_done_flag_q, ps2_done_flag_n;
     assign ps2_done_flag_n = (ps2_clk_cnt_q == 'd10) ? 1'b1 : 1'b0;
