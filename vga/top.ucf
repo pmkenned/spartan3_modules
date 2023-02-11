@@ -1,8 +1,13 @@
 NET clk     LOC=T9;
 
-NET vga_rgb<0>          LOC=R12;
-NET vga_rgb<1>          LOC=T12;
-NET vga_rgb<2>          LOC=R11;
+NET buttons<0>          LOC=M13;
+NET buttons<1>          LOC=M14;
+NET buttons<2>          LOC=L13;
+NET buttons<3>          LOC=L14;
+
+NET vga_rgb<0>          LOC=R11; # blue
+NET vga_rgb<1>          LOC=T12; # green
+NET vga_rgb<2>          LOC=R12; # red
 
 NET vga_hs_l            LOC=R9;
 NET vga_vs_l            LOC=T10;

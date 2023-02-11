@@ -5,20 +5,20 @@ module testbench;
 
     reg clk;
     reg rst;
-    wire [8:0] vga_row;
-    wire [9:0] vga_col;
-    wire vga_display;
+    wire [3:0] buttons;
     wire vga_hs_l;
     wire vga_vs_l;
+    wire [2:0] vga_rgb;
 
-    vga_driver vga_driver(
+    assign buttons[3] = rst;
+    assign buttons[2:0] = 'b0;
+
+    top top(
         .clk(clk),
-        .rst(rst),
-        .vga_row(vga_row),
-        .vga_col(vga_col),
-        .vga_display(vga_display),
+        .buttons(buttons),
         .vga_hs_l(vga_hs_l),
-        .vga_vs_l(vga_vs_l)
+        .vga_vs_l(vga_vs_l),
+        .vga_rgb(vga_rgb)
     );
 
     initial begin
