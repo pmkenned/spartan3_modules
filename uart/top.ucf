@@ -1,0 +1,24 @@
+NET clk     LOC=T9;
+
+NET switches<0>         LOC=F12;
+NET switches<1>         LOC=G12;
+NET switches<2>         LOC=H14;
+NET switches<3>         LOC=H13;
+NET switches<4>         LOC=J14;
+NET switches<5>         LOC=J13;
+NET switches<6>         LOC=K14;
+NET switches<7>         LOC=K13;
+
+NET buttons<0>          LOC=M13;
+NET buttons<1>          LOC=M14;
+NET buttons<2>          LOC=L13;
+NET buttons<3>          LOC=L14;
+
+NET xb_buttons<0>       LOC=A5;
+NET xb_buttons<1>       LOC=B6;
+NET xb_buttons<2>       LOC=M10;
+
+NET rs232_rxd           LOC=T13;
+NET rs232_txd           LOC=R13;
+NET rs232_rxd_a         LOC=N10;
+NET rs232_txd_a         LOC=T14;
