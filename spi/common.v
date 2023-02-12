@@ -80,3 +80,31 @@ module shift_register
     ff_ar #(.W(W), .RESET_VAL(RESET_VAL)) shift_ff(.clk(clk), .rst(rst), .d(q_n), .q(q));
 
 endmodule
+
+// parallel-in, serial-out
+module piso_shift_register #(
+    parameter W=8,
+    parameter RESET_VAL=0,
+    parameter SHIFT_DIR=`SHIFT_DIR_LEFT
+)(
+    input wire clk,
+    input wire rst,
+    input wire shift,
+    input wire x,
+    input wire load,
+    input wire [W-1:0] d,
+    output wire [W-1:0] q
+);
+
+    wire [W-1:0] q_n;
+    generate
+        if (SHIFT_DIR == `SHIFT_DIR_RIGHT) begin
+            assign q_n = load ? d : (shift ? {x, q[W-1:1]} : q);
+        end else begin
+            assign q_n = load ? d : (shift ? {q[W-2:0], x} : q);
+        end
+    endgenerate
+
+    ff_ar #(.W(W), .RESET_VAL(RESET_VAL)) shift_ff(.clk(clk), .rst(rst), .d(q_n), .q(q));
+
+endmodule
