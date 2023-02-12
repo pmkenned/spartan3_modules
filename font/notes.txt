@@ -1,3 +1,0 @@
-https://nerdlypleasures.blogspot.com/2015/04/ibm-character-fonts.html
-./extract_font.py -w 8 -h 16 font_pngs/8x16.png > font.txt
-./gen_font_lut.py font.txt > font_lut.v
