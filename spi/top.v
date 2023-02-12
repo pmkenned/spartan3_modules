@@ -39,6 +39,7 @@
 // FSM State Encodings:
 
 `define STATE_IDLE      7'b0000000
+`define STATE_UART      7'b0000001
 // init states
 `define STATE_TCMD0     7'b1001000
 `define STATE_R1A       7'b0110000
@@ -65,17 +66,30 @@ module top(
     input wire [3:0] buttons,
     input wire [7:0] switches,
     output wire [7:0] leds,
-    input wire [2:0] xb_buttons,
-    inout wire [35:21] gpio
+    input wire [2:0] xb_buttons_l,
+    inout wire [35:21] gpio,
+    input wire rs232_rxd,
+    output wire rs232_txd,
+    input wire rs232_rxd_a,
+    output wire rs232_txd_a,
+    // sram
+    inout wire [15:0] data1,
+    inout wire [15:0] data2,
+    output wire [17:0] addr,
+    output wire oe_l,
+    output wire we_l,
+    output wire ce1_l, ce2_l,
+    output wire ub1_l, ub2_l,
+    output wire lb1_l, lb2_l
 );
 
     wire rst;
     assign rst = buttons[3];
 
     wire [2:0] xb_buttons_q;
-    ff_ar #(.W(3)) xb_buttons_ff(.clk(clk), .rst(rst), .d(xb_buttons), .q(xb_buttons_q));
+    ff_ar #(.W(3)) xb_buttons_ff(.clk(clk), .rst(rst), .d(~xb_buttons_l), .q(xb_buttons_q));
     wire [2:0] xb_buttons_pulse;
-    assign xb_buttons_pulse = xb_buttons & ~xb_buttons_q;
+    assign xb_buttons_pulse = ~xb_buttons_l & ~xb_buttons_q;
 
     wire write_block, read_block;
     assign write_block = xb_buttons_pulse[0];
@@ -96,18 +110,24 @@ module top(
     assign gpio[26] = 1'bz;
     assign gpio[35:28] = 'bz;
 
-    assign leds = {8{miso}}; // TODO: latch miso
+    assign leds[7] = miso;
 
     reg  [6:0] state_n;
     wire [6:0] state_q;
+
+    assign leds[6:0] = state_q;
 
     wire transmit, receive, r1, r3r7, idle, data_block;
     assign transmit     = state_q[6];
     assign receive      = state_q[5];
     assign r1           = state_q[4];
     assign r3r7         = state_q[3];
-    assign idle         = ~state_q[6] & ~state_q[5];
-    assign data_block   = ~state_q[4] & ~state_q[3] & ~idle; // 515 bytes (4120 bits)
+    assign idle         = state_q[6:5] == 2'b0;
+    assign data_block   = (state_q[4:3] == 2'b0) & ~idle; // 515 bytes (4120 bits)
+
+    reg load_cmd_reg;
+    reg  [47:0] cmd_reg_n;
+    wire [47:0] cmd_reg_q;
 
     wire sck_en;
     assign sck = sck_en && ~clk; // sample on negedge of clk
@@ -134,9 +154,7 @@ module top(
         .cnt(mosi_cnt)
     );
 
-    reg load_cmd_reg;
-    reg  [47:0] cmd_reg_n;
-    wire [47:0] cmd_reg_q;
+    wire [9:0] addr_cnt;
 
     always @(*) begin
         state_n = state_q;
@@ -166,7 +184,9 @@ module top(
             // read states
             `STATE_TCMD17:  if (mosi_cnt == max_mosi)   state_n = `STATE_R1E;
             `STATE_R1E:     if (miso_cnt == max_mosi)   state_n = `STATE_RDATA;
-            `STATE_RDATA:   if (miso_cnt == max_mosi)   state_n = `STATE_IDLE;
+            `STATE_RDATA:   if (miso_cnt == max_mosi)   state_n = `STATE_UART;
+            // send data over uart
+            `STATE_UART:    if (addr_cnt == 'd511)      state_n = `STATE_IDLE;
             default:
                 state_n = state_q;
         endcase
@@ -174,14 +194,14 @@ module top(
         load_cmd_reg = ~state_q[6] && state_n[6]; // next state is transmitting
 
         cmd_reg_n = 'dx;
-        case(state_n)
+        case (state_n)
             `STATE_TCMD0:   cmd_reg_n = `CMD0;
             `STATE_TCMD8:   cmd_reg_n = `CMD8;
             `STATE_TCMD55:  cmd_reg_n = `CMD55;
             `STATE_TACMD41: cmd_reg_n = `ACMD41;
             `STATE_TCMD58:  cmd_reg_n = `CMD58;
             `STATE_TCMD24:  cmd_reg_n = `CMD24_A0;
-            `STATE_TDATA:   cmd_reg_n = 48'hfeedbabebeef;
+            `STATE_TDATA:   cmd_reg_n = 48'hfe48656c6c6f; // ".Hello" // 48'hfeedbabebeef;
             `STATE_TCMD17:  cmd_reg_n = `CMD17_A0;
         endcase
     end
@@ -199,6 +219,70 @@ module top(
         .load(load_cmd_reg),
         .d(cmd_reg_n),
         .q(cmd_reg_q)
+    );
+
+    wire [31:0] miso_reg_q;
+    shift_register #(.W(32)) miso_reg(
+        .clk(sck),
+        .rst(rst),
+        .en(receive),
+        .d(miso),
+        .q(miso_reg_q)
+    );
+
+    wire sending_uart;
+    assign sending_uart = state_q == `STATE_UART;
+
+    wire uart_ready;
+    wire send_byte;
+    assign send_byte = uart_ready & sending_uart;
+
+    // sram
+    // TODO: data changes in middle of clock cycle (because of sck)
+    wire [15:0] data1_out, data2_out;
+    assign data1 = (~we_l && ~ce1_l) ? data1_out : 16'bz;
+    assign data2 = (~we_l && ~ce2_l) ? data2_out : 16'bz;
+    assign data1_out = miso_reg_q[15:0];
+    assign data2_out = miso_reg_q[31:16];
+    assign we_l  = ~(receive && data_block && (mosi_cnt[4:0] == 5'b0));
+    assign oe_l = ~send_byte;
+    assign ce1_l = we_l & oe_l;
+    assign ce2_l = we_l & oe_l;
+    assign ub1_l = ce1_l;
+    assign lb1_l = ce1_l;
+    assign ub2_l = ce2_l;
+    assign lb2_l = ce2_l;
+    assign addr  = ~we_l ? {10'b0, mosi_cnt[12:5]} : {10'b0, addr_cnt[9:2]};
+
+    reg [7:0] byte_to_send;
+    always @(*) begin
+        case (addr_cnt[1:0])
+            2'b00: byte_to_send = data2[15:8];
+            2'b01: byte_to_send = data2[7:0];
+            2'b10: byte_to_send = data1[15:8];
+            2'b11: byte_to_send = data1[7:0];
+        endcase
+    end
+
+
+    counter #(.W(10)) addr_cnt_reg(
+        .clk(clk),
+        .rst(rst),
+        .inc(send_byte),
+        .clr(1'b0),
+        .cnt(addr_cnt)
+    );
+
+    uart uart(
+        .clk(clk),
+        .rst(rst),
+        .byte_to_send(byte_to_send),
+        .send_byte(send_byte),
+        .ready(uart_ready),
+        .rs232_rxd(rs232_rxd),
+        .rs232_txd(rs232_txd),
+        .rs232_rxd_a(rs232_rxd_a),
+        .rs232_txd_a(rs232_txd_a)
     );
 
 endmodule

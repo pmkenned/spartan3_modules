@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
+`include "common.vh"
+
 // For reference, see:
 // https://www.sdcard.org/downloads/pls/
 // SD Specifications Part 1 Physical Layer Simplified Specification
@@ -178,6 +180,11 @@
 // DSR: driver-stage Register
 // SCR: SD Configuration Register
 
+`ifndef CMD24_A0
+`define CMD24_A0    48'h58000000006f
+`define CMD17_A0    48'h510000000055
+`endif
+
 // simulation model for spi flash chip
 module spi_flash(
     input  wire sck,
@@ -198,9 +205,62 @@ module spi_flash(
         rst = 1'b0;
     end
 
+    reg [7:0] memory [0:512]; // 512 bytes for now
+
+    wire cmd24_a0, cmd17_a0;
+    assign cmd24_a0 = mosi_reg_q == `CMD24_A0;
+    assign cmd17_a0 = mosi_reg_q == `CMD17_A0;
+
+    // WRITES
+
+    // once mosi goes low, the data starts on the next bit
+    wire cmd24_n, cmd24_q;
+    assign cmd24_n = (cmd24_q | cmd24_a0) & mosi;
+    ff_ar cmd24_ff(.clk(sck), .rst(rst), .d(cmd24_n), .q(cmd24_q));
+
+    // data_block_q indicates that we are currently receiving data bytes
+    wire data_block_n, data_block_q;
+    assign data_block_n = ((cmd24_q && ~cmd24_n) | data_block_q) && (mosi_cnt != 'd4095);
+    ff_ar data_block_ff(.clk(sck), .rst(rst), .d(data_block_n), .q(data_block_q));
+
+    // READS
+
+    wire [3:0] r1_cnt;
+    counter #(.W(4)) r1_cnt_reg(.clk(sck), .rst(rst), .inc(cmd17_q), .clr(1'b0), .cnt(r1_cnt));
+
+    // 8 cycles for R1 and 8 cycles for 0xfe
+    wire cmd17_n, cmd17_q;
+    assign cmd17_n = (cmd17_q | cmd17_a0) & (r1_cnt != 4'd15);
+    ff_ar cmd17_ff(.clk(sck), .rst(rst), .d(cmd17_n), .q(cmd17_q));
+
+    // data_read_block_q indicates that we are currently transmitting data bytes
+    wire data_read_block_n, data_read_block_q;
+    assign data_read_block_n = ((cmd17_q && ~cmd17_n) | data_read_block_q) && (mosi_cnt != 'd4095);
+    ff_ar data_read_block_ff(.clk(sck), .rst(rst), .d(data_read_block_n), .q(data_read_block_q));
+
+    // this counter is used by both reads and writes
+    wire [12:0] mosi_cnt;
+    counter #(.W(13)) mosi_cnt_reg(.clk(sck), .rst(rst), .inc(~cs_l && (data_block_q | data_read_block_n)), .clr(cmd24_q | cmd17_n), .cnt(mosi_cnt));
+
+    // records incoming data
     wire [47:0] mosi_reg_q;
     shift_register #(.W(48)) mosi_reg(.clk(sck), .rst(rst), .en(~cs_l), .d(mosi), .q(mosi_reg_q));
 
-    assign miso = ~cs_l ? 1'b0 : 1'bz;
+    assign miso = ~cs_l ? mem_reg_q[7] : 1'bz;
+
+    // TODO: not storing the last two bytes correctly
+    reg [7:0] mem_reg_q;
+    always @(posedge sck) begin
+        if (data_block_q && mosi_cnt[2:0] == 3'b000) begin
+            memory[mosi_cnt[12:3]-1] <= mosi_reg_q[7:0];
+        end
+        if (data_read_block_n && mosi_cnt[2:0] == 3'b000) begin
+            mem_reg_q <= memory[mosi_cnt[12:3]];
+        end else if (r1_cnt[3] | data_read_block_q) begin
+            mem_reg_q <= {mem_reg_q[6:0], 1'b1};
+        end else begin
+            mem_reg_q <= 8'hfe;
+        end
+    end
 
 endmodule
