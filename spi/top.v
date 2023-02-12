@@ -5,14 +5,14 @@
 // --> CMD0:    48'h400000000095; assert CS
 // <-- R1 (1b): 8'h00;
 // --> CMD8:    48'h4800000100d5; VHS=0001 (3.3V), check pattern=8'b0
-// <-- R7 (6b): 48'h00xxxxx100xx; voltage=4'b0001, check pattner=8'b0
+// <-- R7 (6b): 48'h00xxxxx100xx; voltage=4'b0001, check pattern=8'b0
 // --> CMD55:   48'h770000000065;
 // <-- R1 (1b): 8'h00;
 // --> ACMD41:  48'h6900000000e5; HCS=0
 // <-- R1 (1b): 8'h01; (some number of these)
 // <-- R1 (1b): 8'h00;
 // --> CMD58:   48'h7a00000000fd;
-// <-- R3 (6b): 48'hxxxxxxxxxxxx; OCR register (valid CCS) + CRC7
+// <-- R3 (6b): 48'h00xxxxxxxxxx; OCR register (valid CCS) + CRC7
 //
 // WRITE_BLOCK:         48'b0101_1000_AAAA_AAAA_AAAA_AAAA_AAAA_AAAA_AAAA_AAAA_RRRR_RRR1
 // READ_SINGLE_BLOCK:   48'b0101_0001_AAAA_AAAA_AAAA_AAAA_AAAA_AAAA_AAAA_AAAA_RRRR_RRR1

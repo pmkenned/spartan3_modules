@@ -1,0 +1,12 @@
+Things to try when debugging:
+- Confirm the clock polarity and phase
+- Confirm clock frequency
+- Check for metastability
+- Make sure inputs are debounced
+- Give chip more time to respond
+- Check responses to commands during initialization:
+  - CMD0:   expects 8'h00
+  - CMD8:   expects 48'h00xxxxx100xx
+  - CMD55:  expects 8'h00
+  - ACMD41: expects 8'h01, 8'h01, ..., 8'h00
+  - CMD58:  expects 48'h00xxxxxxxxxx
