@@ -188,6 +188,17 @@ module spi_flash(
 
     // TODO: create state machine which interprets instructions
 
+    reg rst;
+
+    initial begin
+        rst = 1'b0;
+        #10;
+        rst = 1'b1;
+        #10;
+        rst = 1'b0;
+    end
+
+    wire [47:0] mosi_reg_q;
     shift_register #(.W(48)) mosi_reg(.clk(sck), .rst(rst), .en(~cs_l), .d(mosi), .q(mosi_reg_q));
 
     assign miso = ~cs_l ? 1'b0 : 1'bz;

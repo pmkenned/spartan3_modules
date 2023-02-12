@@ -86,14 +86,8 @@ module top(
     wire mosi;
     wire cs_l;
 
-    wire sck_en;
-    assign sck = sck_en && ~clk; // sample on negedge of clk
-    assign miso = 1'bz;
-    assign mosi = cmd_reg_q[47];
-    assign cs_l = ~sck_en;
-
     assign gpio[21] = sck;
-    assign gpio[23] = miso;
+    assign miso = gpio[23];
     assign gpio[25] = mosi;
     assign gpio[27] = cs_l;
 
@@ -104,18 +98,22 @@ module top(
 
     assign leds = {8{miso}}; // TODO: latch miso
 
-    reg  [1:0] state_n;
-    wire [1:0] state_q;
+    reg  [6:0] state_n;
+    wire [6:0] state_q;
 
-    wire transmit, receive, r1, r3r7, idle;
+    wire transmit, receive, r1, r3r7, idle, data_block;
     assign transmit     = state_q[6];
     assign receive      = state_q[5];
     assign r1           = state_q[4];
     assign r3r7         = state_q[3];
     assign idle         = ~state_q[6] & ~state_q[5];
-    assign data_block   = ~state_q[4] & ~state_q[3]; // 515 bytes (4120 bits)
+    assign data_block   = ~state_q[4] & ~state_q[3] & ~idle; // 515 bytes (4120 bits)
 
+    wire sck_en;
+    assign sck = sck_en && ~clk; // sample on negedge of clk
+    assign cs_l = ~sck_en;
     assign sck_en = transmit | receive;
+    assign mosi = transmit ? cmd_reg_q[47] : 1'b1;
 
     reg [12:0] max_mosi;
     always @(*) begin
@@ -128,7 +126,7 @@ module top(
 
     wire [12:0] mosi_cnt, miso_cnt;
     assign miso_cnt = mosi_cnt; // alias
-    counter #(.W(6)) mosi_cnt_reg(
+    counter #(.W(13)) mosi_cnt_reg(
         .clk(clk),
         .rst(rst),
         .inc(transmit | receive),
@@ -144,10 +142,11 @@ module top(
         state_n = state_q;
         case (state_q)
             // idle state
-            `STATE_IDLE:
+            `STATE_IDLE: begin
                 state_n = `STATE_IDLE;
                 if (write_block)    state_n = `STATE_TCMD24;
                 if (read_block)     state_n = `STATE_TCMD17;
+            end
             // init states
             `STATE_TCMD0:   if (mosi_cnt == max_mosi)   state_n = `STATE_R1A;
             `STATE_R1A:     if (miso_cnt == max_mosi)   state_n = `STATE_TCMD8;
@@ -172,7 +171,7 @@ module top(
                 state_n = state_q;
         endcase
 
-        load_cmd_reg = state_n[6]; // next state is transmitting
+        load_cmd_reg = ~state_q[6] && state_n[6]; // next state is transmitting
 
         cmd_reg_n = 'dx;
         case(state_n)
@@ -195,18 +194,11 @@ module top(
     ) cmd_reg (
         .clk(clk),
         .rst(rst),
-        .shift(transmit | receive),
+        .shift(transmit),
         .x(cmd_reg_q[47]),
         .load(load_cmd_reg),
         .d(cmd_reg_n),
         .q(cmd_reg_q)
-    );
-
-    spi_flash spi_flash(
-        .sck(sck),
-        .miso(miso),
-        .mosi(mosi),
-        .cs_l(cs_l)
     );
 
 endmodule
