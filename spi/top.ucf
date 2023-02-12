@@ -1,0 +1,44 @@
+NET clk     LOC=T9;
+
+NET switches<0>         LOC=F12;
+NET switches<1>         LOC=G12;
+NET switches<2>         LOC=H14;
+NET switches<3>         LOC=H13;
+NET switches<4>         LOC=J14;
+NET switches<5>         LOC=J13;
+NET switches<6>         LOC=K14;
+NET switches<7>         LOC=K13;
+
+NET buttons<0>          LOC=M13;
+NET buttons<1>          LOC=M14;
+NET buttons<2>          LOC=L13;
+NET buttons<3>          LOC=L14;
+
+NET leds<0>             LOC=K12;
+NET leds<1>             LOC=P14;
+NET leds<2>             LOC=L12;
+NET leds<3>             LOC=N14;
+NET leds<4>             LOC=P13;
+NET leds<5>             LOC=N12;
+NET leds<6>             LOC=P12;
+NET leds<7>             LOC=P11;
+
+NET xb_buttons<0>       LOC=A5;
+NET xb_buttons<1>       LOC=B6;
+NET xb_buttons<2>       LOC=M10;
+
+NET gpio<21>            LOC=C15;
+NET gpio<22>            LOC=C16;
+NET gpio<23>            LOC=D15;
+NET gpio<24>            LOC=D16;
+NET gpio<25>            LOC=E15;
+NET gpio<26>            LOC=E16;
+NET gpio<27>            LOC=F15;
+NET gpio<28>            LOC=G15;
+NET gpio<29>            LOC=G16;
+NET gpio<30>            LOC=H15;
+NET gpio<31>            LOC=H16;
+NET gpio<32>            LOC=J16;
+NET gpio<33>            LOC=K16;
+NET gpio<34>            LOC=K15;
+NET gpio<35>            LOC=L15;
